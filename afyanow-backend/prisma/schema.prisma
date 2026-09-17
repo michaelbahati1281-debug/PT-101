@@ -1,0 +1,348 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model appointment {
+  id                 String                       @id
+  appointmentNumber  String                       @unique(map: "Appointment_appointmentNumber_key")
+  patientId          String
+  doctorId           String
+  hospitalId         String?
+  serviceId          String
+  visitType          appointment_visitType
+  homeVisitAddressId String?                      @unique(map: "Appointment_homeVisitAddressId_key")
+  date               DateTime                     @db.Date
+  startTime          String
+  endTime            String
+  consultationType   appointment_consultationType
+  reason             String?
+  status             appointment_status           @default(PENDING)
+  paymentStatus      appointment_paymentStatus    @default(UNPAID)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime               @updatedAt
+  doctor             doctor                       @relation(fields: [doctorId], references: [id], map: "Appointment_doctorId_fkey")
+  homevisitaddress   homevisitaddress?            @relation(fields: [homeVisitAddressId], references: [id], map: "Appointment_homeVisitAddressId_fkey")
+  hospital           hospital?                    @relation(fields: [hospitalId], references: [id], onDelete: Restrict, map: "Appointment_hospitalId_fkey")
+  patient            patient                      @relation(fields: [patientId], references: [id], map: "Appointment_patientId_fkey")
+  service            service                      @relation(fields: [serviceId], references: [id], map: "Appointment_serviceId_fkey")
+  payment            payment[]
+  review             review?
+
+  @@unique([doctorId, date, startTime], map: "Appointment_doctorId_date_startTime_key")
+  @@index([hospitalId, status, date], map: "Appointment_hospitalId_status_date_idx")
+  @@index([patientId, status, date], map: "Appointment_patientId_status_date_idx")
+  @@index([serviceId], map: "Appointment_serviceId_idx")
+}
+
+model doctor {
+  id                 String               @id
+  userId             String               @unique(map: "Doctor_userId_key")
+  specialty          String
+  category           String?
+  bio                String?
+  experience         Int?
+  rating             Decimal              @default(0.0) @db.Decimal(2, 1)
+  consultationFee    Decimal              @db.Decimal(12, 2)
+  homeService        Boolean              @default(false)
+  onlineConsultation Boolean              @default(false)
+  languages          Json
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime               @updatedAt
+  appointment        appointment[]
+  user               user                 @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Doctor_userId_fkey")
+  doctoravailability doctoravailability[]
+  doctorhospital     doctorhospital[]
+  doctorservice      doctorservice[]
+  review             review[]
+
+  @@index([specialty, homeService, onlineConsultation], map: "Doctor_specialty_homeService_onlineConsultation_idx")
+}
+
+model doctoravailability {
+  id         String   @id
+  doctorId   String
+  hospitalId String
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  isActive   Boolean  @default(true)
+  doctor     doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade, map: "DoctorAvailability_doctorId_fkey")
+  hospital   hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade, map: "DoctorAvailability_hospitalId_fkey")
+
+  @@unique([doctorId, hospitalId, dayOfWeek, startTime], map: "DoctorAvailability_doctorId_hospitalId_dayOfWeek_startTime_key")
+  @@index([doctorId, hospitalId, dayOfWeek, isActive], map: "DoctorAvailability_doctorId_hospitalId_dayOfWeek_isActive_idx")
+  @@index([hospitalId], map: "DoctorAvailability_hospitalId_idx")
+}
+
+model doctorhospital {
+  id                 String   @id
+  doctorId           String
+  hospitalId         String
+  consultationFee    Decimal? @db.Decimal(12, 2)
+  homeVisitAvailable Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  doctor             doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade, map: "DoctorHospital_doctorId_fkey")
+  hospital           hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade, map: "DoctorHospital_hospitalId_fkey")
+
+  @@unique([doctorId, hospitalId], map: "DoctorHospital_doctorId_hospitalId_key")
+  @@index([hospitalId, isActive], map: "DoctorHospital_hospitalId_isActive_idx")
+}
+
+model doctorservice {
+  doctorId  String
+  serviceId String
+  doctor    doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade, map: "DoctorService_doctorId_fkey")
+  service   service @relation(fields: [serviceId], references: [id], onDelete: Cascade, map: "DoctorService_serviceId_fkey")
+
+  @@id([doctorId, serviceId])
+  @@index([serviceId], map: "DoctorService_serviceId_idx")
+}
+
+model homevisitaddress {
+  id          String       @id
+  patientId   String
+  region      String
+  district    String
+  ward        String
+  street      String
+  description String?
+  latitude    Decimal?     @db.Decimal(10, 7)
+  longitude   Decimal?     @db.Decimal(10, 7)
+  createdAt   DateTime     @default(now())
+  appointment appointment?
+  patient     patient      @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "HomeVisitAddress_patientId_fkey")
+
+  @@index([patientId], map: "HomeVisitAddress_patientId_idx")
+}
+
+model hospital {
+  id                 String               @id
+  name               String               @unique(map: "Hospital_name_key")
+  description        String?
+  address            String
+  region             String
+  district           String?
+  ward               String?
+  phone              String
+  email              String?
+  website            String?
+  latitude           Decimal?             @db.Decimal(10, 7)
+  longitude          Decimal?             @db.Decimal(10, 7)
+  openingHours       Json?
+  isActive           Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime               @updatedAt
+  appointment        appointment[]
+  doctoravailability doctoravailability[]
+  doctorhospital     doctorhospital[]
+  hospitalservice    hospitalservice[]
+
+  @@index([region, district, isActive], map: "Hospital_region_district_isActive_idx")
+}
+
+model hospitalservice {
+  hospitalId String
+  serviceId  String
+  hospital   hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade, map: "HospitalService_hospitalId_fkey")
+  service    service  @relation(fields: [serviceId], references: [id], onDelete: Cascade, map: "HospitalService_serviceId_fkey")
+
+  @@id([hospitalId, serviceId])
+  @@index([serviceId], map: "HospitalService_serviceId_idx")
+}
+
+model insuranceprovider {
+  id               String             @id
+  name             String             @unique(map: "InsuranceProvider_name_key")
+  isActive         Boolean            @default(true)
+  patientinsurance patientinsurance[]
+}
+
+model notification {
+  id        String            @id
+  userId    String
+  title     String
+  message   String
+  type      notification_type
+  isRead    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  user      user              @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Notification_userId_fkey")
+
+  @@index([userId, isRead, createdAt], map: "Notification_userId_isRead_createdAt_idx")
+}
+
+model patient {
+  id               String             @id
+  userId           String             @unique(map: "Patient_userId_key")
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  region           String?
+  district         String?
+  ward             String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime               @updatedAt
+  appointment      appointment[]
+  homevisitaddress homevisitaddress[]
+  user             user               @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Patient_userId_fkey")
+  patientinsurance patientinsurance[]
+  payment          payment[]
+  review           review[]
+}
+
+model patientinsurance {
+  id                String                  @id
+  patientId         String
+  providerId        String
+  memberNumber      String
+  beneficiaryName   String
+  status            patientinsurance_status @default(PENDING_VERIFICATION)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime               @updatedAt
+  patient           patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "PatientInsurance_patientId_fkey")
+  insuranceprovider insuranceprovider       @relation(fields: [providerId], references: [id], map: "PatientInsurance_providerId_fkey")
+
+  @@unique([providerId, memberNumber], map: "PatientInsurance_providerId_memberNumber_key")
+  @@index([patientId], map: "PatientInsurance_patientId_idx")
+}
+
+model payment {
+  id                   String         @id
+  appointmentId        String
+  patientId            String
+  amount               Decimal        @db.Decimal(12, 2)
+  currency             String         @default("TZS")
+  method               payment_method
+  transactionReference String         @unique(map: "Payment_transactionReference_key")
+  providerReference    String?        @unique(map: "Payment_providerReference_key")
+  status               payment_status @default(PENDING)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime               @updatedAt
+  appointment          appointment    @relation(fields: [appointmentId], references: [id], map: "Payment_appointmentId_fkey")
+  patient              patient        @relation(fields: [patientId], references: [id], map: "Payment_patientId_fkey")
+
+  @@index([appointmentId, status], map: "Payment_appointmentId_status_idx")
+  @@index([patientId], map: "Payment_patientId_idx")
+}
+
+model review {
+  id            String      @id
+  appointmentId String      @unique(map: "Review_appointmentId_key")
+  patientId     String
+  doctorId      String
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+  appointment   appointment @relation(fields: [appointmentId], references: [id], map: "Review_appointmentId_fkey")
+  doctor        doctor      @relation(fields: [doctorId], references: [id], map: "Review_doctorId_fkey")
+  patient       patient     @relation(fields: [patientId], references: [id], map: "Review_patientId_fkey")
+
+  @@index([doctorId, rating], map: "Review_doctorId_rating_idx")
+  @@index([patientId], map: "Review_patientId_idx")
+}
+
+model service {
+  id              String            @id
+  name            String            @unique(map: "Service_name_key")
+  description     String
+  category        String?
+  image           String?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime               @updatedAt
+  appointment     appointment[]
+  doctorservice   doctorservice[]
+  hospitalservice hospitalservice[]
+}
+
+model user {
+  id           String         @id
+  firstName    String
+  lastName     String
+  email        String         @unique(map: "User_email_key")
+  phone        String         @unique(map: "User_phone_key")
+  passwordHash String
+  role         user_role      @default(PATIENT)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime               @updatedAt
+  doctor       doctor?
+  notification notification[]
+  patient      patient?
+
+  @@index([role, isActive], map: "User_role_isActive_idx")
+}
+
+enum notification_type {
+  APPOINTMENT_BOOKED
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  APPOINTMENT_REMINDER
+}
+
+enum patientinsurance_status {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum payment_method {
+  MPESA
+  AIRTEL_MONEY
+  MIXX
+  HALOPESA
+  CARD
+  BANK
+}
+
+enum appointment_visitType {
+  HOSPITAL
+  HOME
+}
+
+enum user_role {
+  PATIENT
+  DOCTOR
+  HOSPITAL_STAFF
+  ADMIN
+}
+
+enum payment_status {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum appointment_consultationType {
+  IN_PERSON
+  ONLINE
+}
+
+enum appointment_status {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
+  REJECTED
+}
+
+enum appointment_paymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}

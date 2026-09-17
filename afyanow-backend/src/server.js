@@ -1,0 +1,2 @@
+import app from "./app.js"; import { env, validateEnv } from "./config/env.js"; import { prisma } from "./config/prisma.js";
+validateEnv(); const server = app.listen(env.port, () => console.log(`AfyaNow API listening on port ${env.port}`)); async function shutdown() { await prisma.$disconnect(); server.close(() => process.exit(0)); } process.on("SIGTERM", shutdown); process.on("SIGINT", shutdown);
