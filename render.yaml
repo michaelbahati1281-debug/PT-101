@@ -10,7 +10,7 @@ services:
   - type: web
     name: afyanow-backend
     runtime: node
-    repo: https://github.com/michaelbahati1281-debug/AfyaNow.git
+    repo: https://github.com/michaelbahati1281-debug/PT-101.git
     branch: main
     rootDir: afyanow-backend
     plan: free
