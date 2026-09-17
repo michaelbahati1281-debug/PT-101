@@ -16,7 +16,7 @@ services:
     plan: free
     region: oregon
     autoDeploy: true
-    buildCommand: npm ci && cd ../AfyaNowReact && npm ci && VITE_API_URL=/api/v1 npm run build && cd ../afyanow-backend && npx prisma generate && npx prisma db push --skip-generate && npx prisma db seed
+    buildCommand: npm ci --include=dev && cd ../AfyaNowReact && npm ci --include=dev && VITE_API_URL=/api/v1 npm run build && cd ../afyanow-backend && npx prisma generate && npx prisma db push --skip-generate && npx prisma db seed
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
@@ -29,6 +29,6 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://afyanow-backend.onrender.com
+        value: https://afyanow.vercel.app
       - key: NODE_ENV
         value: production
